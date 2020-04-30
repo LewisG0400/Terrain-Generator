@@ -4,6 +4,8 @@ Terrain::Terrain(float windowWidth, float windowHeight) {
 	noise = new FastNoise();
 	noise->SetNoiseType(FastNoise::SimplexFractal);
 	noise->SetFrequency(textureWidth * 0.000004);
+
+	createMesh();
 	createShader();
 	setupUniforms();
 	addChunk(0, 0);
@@ -107,8 +109,7 @@ void Terrain::setupUniforms() {
 	transformUniform = glGetUniformLocation(programID, "transform");
 }
 
-GLuint Terrain::createMesh(int x, int y) {
-	GLuint vao;
+void Terrain::createMesh() {
 	GLuint vbo, tbo, ibo;
 
 	GLfloat vertices[] = {
@@ -152,8 +153,6 @@ GLuint Terrain::createMesh(int x, int y) {
 
 	glDeleteBuffers(1, &vbo);
 	glDeleteBuffers(1, &ibo);
-
-	return vao;
 }
 
 GLuint Terrain::createTexture(int xOffset, int zOffset) {
@@ -186,7 +185,6 @@ GLuint Terrain::createTexture(int xOffset, int zOffset) {
 
 void Terrain::addChunk(int x, int z) {
 	Chunk* chunk = new Chunk();
-	chunk->vao = createMesh(x, z);
 	chunk->textureID = createTexture(x, z);
 	chunk->transform = glm::translate(glm::mat4(1.0f), glm::vec3(x * 2, 0.0, z * 2));
 
@@ -195,9 +193,9 @@ void Terrain::addChunk(int x, int z) {
 
 void Terrain::render(Camera* camera) {
 	glUseProgram(programID);
+	glBindVertexArray(vao);
 
 	for (auto chunk : chunks) {
-		glBindVertexArray(chunk->vao);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chunk->textureID);
 
@@ -211,9 +209,9 @@ void Terrain::render(Camera* camera) {
 
 Terrain::~Terrain() {
 	glDeleteProgram(programID);
+	glDeleteVertexArrays(1, &vao);
 	
 	for (auto chunk : chunks) {
-		glDeleteVertexArrays(1, &chunk->vao);
 		glDeleteTextures(1, &chunk->textureID);
 		delete chunk;
 	}

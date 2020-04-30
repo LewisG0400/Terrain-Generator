@@ -24,9 +24,10 @@ public:
 	~Terrain();
 private:
 	typedef struct chunk {
-		GLuint vao, textureID;
+		GLuint textureID;
 		glm::mat4 transform;
 	} Chunk;
+	GLuint vao;
 	GLuint programID;
 	GLuint eyeUniform, projectionUniform, heightMapUniform, transformUniform;
 
@@ -38,7 +39,7 @@ private:
 
 	FastNoise* noise;
 
-	GLuint createMesh(int x, int z);
+	void createMesh();
 	GLuint createTexture(int x, int z);
 	void createShader();
 	void setupUniforms();
