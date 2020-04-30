@@ -1,6 +1,7 @@
 #define GLEW_STATIC
 
 #include <iostream>
+#include <time.h>
 
 #include <GLEW/glew.h>
 #include <GLFW/glfw3.h>
@@ -69,6 +70,7 @@ void render() {
 }
 
 int main() {
+	srand(time(NULL));
 	initGLFW();
 	initGL();
 

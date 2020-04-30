@@ -1,62 +1,19 @@
 #include "Terrain.h"
 
 Terrain::Terrain(float windowWidth, float windowHeight) {
-	createMesh();
+	noise = new FastNoise();
+	noise->SetNoiseType(FastNoise::SimplexFractal);
+	noise->SetFrequency(textureWidth * 0.000004);
 	createShader();
 	setupUniforms();
-	createTexture();
+	addChunk(0, 0);
+	addChunk(1, 0);
+	addChunk(2, 0);
+	addChunk(0, 1);
+	addChunk(1, 1);
+	addChunk(2, 1);
 
 	projection = glm::perspective(45.0f, windowWidth / windowHeight, 0.01f, 100.0f);
-}
-
-void Terrain::createMesh() {
-	GLuint vbo, tbo, ibo;
-
-	GLfloat vertices[] = {
-		-1.0f, 0.0f, -1.0f,
-		1.0f, 0.0f, -1.0f,
-		1.0f, 0.0f, 1.0f,
-		-1.0f, 0.0f, 1.0f
-	};
-
-	for (int i = 0; i < 12; i++) {
-		vertices[i] *= 2.0f;
-	}
-
-	GLfloat texCoords[] = {
-		0.0f, 0.0f,
-		1.0f, 0.0f,
-		1.0f, 1.0f,
-		0.0f, 1.0f };
-
-	GLuint indices[] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-
-	glCreateVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glCreateBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	glCreateBuffers(1, &tbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(1);
-
-	glCreateBuffers(1, &ibo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-
-	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &ibo);
 }
 
 void Terrain::createShader() {
@@ -147,9 +104,60 @@ void Terrain::setupUniforms() {
 	eyeUniform = glGetUniformLocation(programID, "eye");
 	projectionUniform = glGetUniformLocation(programID, "projection");
 	heightMapUniform = glGetUniformLocation(programID, "heightMap");
+	transformUniform = glGetUniformLocation(programID, "transform");
 }
 
-void Terrain::createTexture() {
+GLuint Terrain::createMesh(int x, int y) {
+	GLuint vao;
+	GLuint vbo, tbo, ibo;
+
+	GLfloat vertices[] = {
+		-1.0f, 0.0f, -1.0f,
+		1.0f, 0.0f, -1.0f,
+		1.0f, 0.0f, 1.0f,
+		-1.0f, 0.0f, 1.0f
+	};
+
+	GLfloat texCoords[] = {
+		0.0f, 0.0f,
+		1.0f, 0.0f,
+		1.0f, 1.0f,
+		0.0f, 1.0f };
+
+	GLuint indices[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+
+	glCreateVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glCreateBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+
+	glCreateBuffers(1, &tbo);
+	glBindBuffer(GL_ARRAY_BUFFER, tbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(1);
+
+	glCreateBuffers(1, &ibo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+
+	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &ibo);
+
+	return vao;
+}
+
+GLuint Terrain::createTexture(int xOffset, int zOffset) {
+	GLuint textureID;
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -157,25 +165,11 @@ void Terrain::createTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	unsigned int width = 1500, height = 1500;
-
-	double frequency = 14.0;
-	double fx = width / frequency, fy = height / frequency;
-	int octaves = 5;
-
-	int seed = 25536885;
-
 	std::vector<unsigned char> data;
-	//unsigned char* data;
-	//data = new unsigned char[width * height * 3];//(unsigned char*)malloc(width * height * 3 * sizeof(char));
 
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			//data[x * 3 + y * width] = (unsigned char)255;// (double)x / width * 255.0;
-			//data[x * 3 + (y * width) + 1] = (unsigned char)0;//(double)x / width * 255.0;
-			//data[x * 3 + (y * width) + 2] = (unsigned char)0;// (double)x / width * 255.0;
-			double value = perlinNoise2D(x, y, 0.6, 8) * 127.5 + 127.5;
-			//std::cout << value << std::endl;
+	for (int z = 0; z < textureHeight; z++) {
+		for (int x = 0; x < textureWidth; x++) {
+			double value = noise->GetNoise(x + xOffset * textureWidth, z + zOffset * textureHeight) * 127.5 - 127.5;
 			data.push_back(value);
 			data.push_back(value);
 			data.push_back(value);
@@ -184,23 +178,43 @@ void Terrain::createTexture() {
 
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
 	glGenerateMipmap(GL_TEXTURE_2D);
+
+	return textureID;
+}
+
+void Terrain::addChunk(int x, int z) {
+	Chunk* chunk = new Chunk();
+	chunk->vao = createMesh(x, z);
+	chunk->textureID = createTexture(x, z);
+	chunk->transform = glm::translate(glm::mat4(1.0f), glm::vec3(x * 2, 0.0, z * 2));
+
+	chunks.push_back(chunk);
 }
 
 void Terrain::render(Camera* camera) {
 	glUseProgram(programID);
-	glBindVertexArray(vao);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureID);
 
-	glUniformMatrix4fv(eyeUniform, 1, GL_FALSE, glm::value_ptr(camera->getTransform()));
-	glUniformMatrix4fv(projectionUniform, 1, GL_FALSE, glm::value_ptr(projection));
+	for (auto chunk : chunks) {
+		glBindVertexArray(chunk->vao);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, chunk->textureID);
 
-	glDrawElements(GL_PATCHES, 6, GL_UNSIGNED_INT, 0);
+		glUniformMatrix4fv(eyeUniform, 1, GL_FALSE, glm::value_ptr(camera->getTransform()));
+		glUniformMatrix4fv(projectionUniform, 1, GL_FALSE, glm::value_ptr(projection));
+		glUniformMatrix4fv(transformUniform, 1, GL_FALSE, glm::value_ptr(chunk->transform));
+
+		glDrawElements(GL_PATCHES, 6, GL_UNSIGNED_INT, 0);
+	}
 }
 
 Terrain::~Terrain() {
 	glDeleteProgram(programID);
-	glDeleteBuffers(1, &vao);
+	
+	for (auto chunk : chunks) {
+		glDeleteVertexArrays(1, &chunk->vao);
+		glDeleteTextures(1, &chunk->textureID);
+		delete chunk;
+	}
 }

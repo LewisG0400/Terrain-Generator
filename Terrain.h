@@ -12,7 +12,7 @@
 
 #include "Camera.h"
 #include "Terrain.h"
-#include "PerlinNoise.h"
+#include "FastNoise.h"
 
 class Terrain
 {
@@ -23,23 +23,33 @@ public:
 
 	~Terrain();
 private:
-	GLuint vao;
+	typedef struct chunk {
+		GLuint vao, textureID;
+		glm::mat4 transform;
+	} Chunk;
 	GLuint programID;
-	GLuint eyeUniform, projectionUniform, heightMapUniform;
-	GLuint textureID;
+	GLuint eyeUniform, projectionUniform, heightMapUniform, transformUniform;
+
+	GLuint textureWidth = 500, textureHeight = 500;
+
+	std::vector<Chunk*> chunks;
 
 	glm::mat4 projection;
 
-	void createMesh();
+	FastNoise* noise;
+
+	GLuint createMesh(int x, int z);
+	GLuint createTexture(int x, int z);
 	void createShader();
 	void setupUniforms();
-	void createTexture();
+
+	void addChunk(int x, int z);
 
 	static std::string readFile(std::string path) {
 		std::ifstream f;
 		std::string line;
 		std::string content;
-		f.open(path, std::ios::in);
+		f.open("res/" + path, std::ios::in);
 		if (f.is_open()) {
 			while (std::getline(f, line)) {
 				content.append(line + '\n');

@@ -7,7 +7,7 @@ in vec2 texCoordVertTC[];
 out vec2 texCoordTCTE[];
 
 void main(void) {
-    float res = 250.f;
+    float res = 100.f;
     if (gl_InvocationID == 0) {
         gl_TessLevelInner[0] = res;
         gl_TessLevelOuter[0] = res;
