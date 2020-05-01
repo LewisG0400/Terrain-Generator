@@ -1,13 +1,11 @@
 #include "Terrain.h"
 
-Terrain::Terrain(float windowWidth, float windowHeight) {
+Terrain::Terrain(int windowWidth, int windowHeight) {
 	noise = new FastNoise();
 	noise->SetNoiseType(FastNoise::SimplexFractal);
-	noise->SetFrequency(textureWidth * 0.000004);
+	noise->SetFrequency(TEXTURE_WIDTH * 0.000004);
+	noise->SetFractalOctaves(4);
 
-	createMesh();
-	createShader();
-	setupUniforms();
 	addChunk(0, 0);
 	addChunk(1, 0);
 	addChunk(2, 0);
@@ -15,7 +13,18 @@ Terrain::Terrain(float windowWidth, float windowHeight) {
 	addChunk(1, 1);
 	addChunk(2, 1);
 
-	projection = glm::perspective(45.0f, windowWidth / windowHeight, 0.01f, 100.0f);
+	setProjection(windowWidth, windowHeight);
+}
+
+void Terrain::setProjection(int windowWidth, int windowHeight) {
+	createMesh();
+	createShader();
+	setupUniforms();
+
+	std::cout << windowWidth << ", " << windowHeight << std::endl;
+	projection = glm::perspective(45.0f, (float)(windowWidth) / (float)(windowHeight), 0.01f, 100.0f);
+	glUseProgram(programID);
+	glUniformMatrix4fv(projectionUniform, 1, GL_FALSE, glm::value_ptr(projection));
 }
 
 void Terrain::createShader() {
@@ -157,28 +166,32 @@ void Terrain::createMesh() {
 
 GLuint Terrain::createTexture(int xOffset, int zOffset) {
 	GLuint textureID;
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	std::vector<unsigned char> data;
+	//unsigned char* data = new unsigned char[TEXTURE_WIDTH * TEXTURE_HEIGHT * 3];
+	RGB* data = new RGB[TEXTURE_WIDTH * TEXTURE_HEIGHT];
 
-	for (int z = 0; z < textureHeight; z++) {
-		for (int x = 0; x < textureWidth; x++) {
-			double value = noise->GetNoise(x + xOffset * textureWidth, z + zOffset * textureHeight) * 127.5 - 127.5;
-			data.push_back(value);
-			data.push_back(value);
-			data.push_back(value);
+	for (int z = 0; z < TEXTURE_HEIGHT; z++) {
+		for (int x = 0; x < TEXTURE_WIDTH; x++) {
+			double value = noise->GetNoise(x + xOffset * TEXTURE_WIDTH, z + zOffset * TEXTURE_HEIGHT) * 127.5 - 126.5;
+
+			int index = x + z * TEXTURE_WIDTH;
+
+			RGB* colour = new RGB();
+			colour->r = value;
+			colour->g = value;
+			colour->b = value;
+			colour->a = 255;
+
+			data[index] = *colour;
 		}
 	}
 
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textureWidth, textureHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, data.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	glGenerateMipmap(GL_TEXTURE_2D);
+
+	delete[] data;
 
 	return textureID;
 }
@@ -200,7 +213,6 @@ void Terrain::render(Camera* camera) {
 		glBindTexture(GL_TEXTURE_2D, chunk->textureID);
 
 		glUniformMatrix4fv(eyeUniform, 1, GL_FALSE, glm::value_ptr(camera->getTransform()));
-		glUniformMatrix4fv(projectionUniform, 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(transformUniform, 1, GL_FALSE, glm::value_ptr(chunk->transform));
 
 		glDrawElements(GL_PATCHES, 6, GL_UNSIGNED_INT, 0);

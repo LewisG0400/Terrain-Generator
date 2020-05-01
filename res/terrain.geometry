@@ -13,7 +13,8 @@ out vec3 pos;
 uniform sampler2D heightMap;
 
 void main() {
-	texCoordGeomFrag = texCoordTEGeom[0];
+	float mixAmt = 0.5;
+	texCoordGeomFrag = mix(mix(texCoordTEGeom[0], texCoordTEGeom[1], mixAmt), texCoordTEGeom[2], mixAmt);
 
 	float scale = 4.0f;
 

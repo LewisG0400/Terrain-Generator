@@ -14,11 +14,15 @@
 #include "Terrain.h"
 #include "FastNoise.h"
 
+#define TEXTURE_WIDTH 500
+#define TEXTURE_HEIGHT 500
+
 class Terrain
 {
 public:
-	Terrain(float windowWidth, float windowHeight);
+	Terrain(int windowWidth, int windowHeight);
 
+	void setProjection(int windowWidth, int windowHeight);
 	void render(Camera* camera);
 
 	~Terrain();
@@ -27,11 +31,14 @@ private:
 		GLuint textureID;
 		glm::mat4 transform;
 	} Chunk;
+
+	typedef struct rgb {
+		unsigned char r, g, b, a;
+	} RGB;
+
 	GLuint vao;
 	GLuint programID;
 	GLuint eyeUniform, projectionUniform, heightMapUniform, transformUniform;
-
-	GLuint textureWidth = 500, textureHeight = 500;
 
 	std::vector<Chunk*> chunks;
 
