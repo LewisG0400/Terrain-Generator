@@ -3,6 +3,7 @@
 Terrain::Terrain(int windowWidth, int windowHeight) {
 	noise = new FastNoise();
 	noise->SetNoiseType(FastNoise::SimplexFractal);
+	noise->SetSeed(rand());
 	noise->SetFrequency(TEXTURE_WIDTH * 0.000004);
 	noise->SetFractalOctaves(4);
 
@@ -172,17 +173,19 @@ GLuint Terrain::createTexture(int xOffset, int zOffset) {
 
 	for (int z = 0; z < TEXTURE_HEIGHT; z++) {
 		for (int x = 0; x < TEXTURE_WIDTH; x++) {
-			double value = noise->GetNoise(x + xOffset * TEXTURE_WIDTH, z + zOffset * TEXTURE_HEIGHT) * 127.5 - 126.5;
+			double value = noise->GetNoise(x + xOffset * TEXTURE_WIDTH, z + zOffset * TEXTURE_HEIGHT);
+			value *= 127.5;
+			value -= 127.5;
+
+			RGB colour = RGB();
+			colour.r = value;
+			colour.g = value;
+			colour.b = value;
+			colour.a = 0;
 
 			int index = x + z * TEXTURE_WIDTH;
 
-			RGB* colour = new RGB();
-			colour->r = value;
-			colour->g = value;
-			colour->b = value;
-			colour->a = 255;
-
-			data[index] = *colour;
+			data[index] = colour;
 		}
 	}
 
@@ -227,4 +230,6 @@ Terrain::~Terrain() {
 		glDeleteTextures(1, &chunk->textureID);
 		delete chunk;
 	}
+
+	delete noise;
 }
